@@ -217,8 +217,9 @@ typedef struct options {
 	bool animation_force_steps;
 	/// Whether to clamp animations
 	bool animation_clamping;
-	/// TODO: window animation blacklist
 	/// TODO: open/close animations
+	/// moveing or resizing animation opacity minim, for reduce flicker
+	double animation_opacity_min;
 
 	// === Opacity ===
 	/// Default opacity for inactive windows.

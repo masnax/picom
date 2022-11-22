@@ -613,6 +613,8 @@ char *parse_config_libconfig(options_t *opt, const char *config_file, bool *shad
 	lcfg_lookup_bool(&cfg, "animation-force-steps", &opt->animation_force_steps);
 	// --animation-clamping
 	lcfg_lookup_bool(&cfg, "animation-clamping", &opt->animation_clamping);
+	// --animation-opacity-min
+	config_lookup_float(&cfg, "animation-opacity-min", &opt->animation_opacity_min);
 	// --focus-exclude
 	parse_cfg_condlst(&cfg, &opt->focus_blacklist, "focus-exclude");
 	// --invert-color-include

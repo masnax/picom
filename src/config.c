@@ -540,7 +540,12 @@ enum open_window_animation parse_open_window_animation(const char *src) {
 		return OPEN_WINDOW_ANIMATION_SLIDE_LEFT;
 	} else if (strcmp(src, "slide-right") == 0) {
 		return OPEN_WINDOW_ANIMATION_SLIDE_RIGHT;
+	} else if (strcmp(src, "slide-in") == 0) {
+		return OPEN_WINDOW_ANIMATION_SLIDE_IN;
+	} else if (strcmp(src, "slide-out") == 0) {
+		return OPEN_WINDOW_ANIMATION_SLIDE_OUT;
 	}
+
 	return OPEN_WINDOW_ANIMATION_INVALID;
 }
 
@@ -599,6 +604,7 @@ char *parse_config(options_t *opt, const char *config_file, bool *shadow_enable,
 	    .animation_delta = 10,
 	    .animation_force_steps = false,
 	    .animation_clamping = true,
+	    .animation_opacity_min = 0.0,
 
 	    .inactive_opacity = 1.0,
 	    .inactive_opacity_override = false,
