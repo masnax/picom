@@ -605,6 +605,7 @@ char *parse_config(options_t *opt, const char *config_file, bool *shadow_enable,
 	    .animation_force_steps = false,
 	    .animation_clamping = true,
 	    .animation_opacity_min = 0.0,
+	    .animation_blacklist = NULL,
 
 	    .inactive_opacity = 1.0,
 	    .inactive_opacity_override = false,

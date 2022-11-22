@@ -218,6 +218,8 @@ typedef struct options {
 	/// Whether to clamp animations
 	bool animation_clamping;
 	/// TODO: open/close animations
+	/// Animation blacklist. A linked list of conditions.
+	c2_lptr_t *animation_blacklist;
 	/// moveing or resizing animation opacity minim, for reduce flicker
 	double animation_opacity_min;
 

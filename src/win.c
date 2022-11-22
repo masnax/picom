@@ -703,11 +703,8 @@ void win_process_update_flags(session_t *ps, struct managed_win *w) {
 		}
 
 		// Ignore animations all together if set to none on window type basis
-		if (ps->o.wintype_option[w->window_type].animation == 0) {
-			w->g = w->pending_g;
-
 		// Update window geometry
-		} else if (ps->o.animations) {
+		if (win_should_animate(ps, w)) {
 			if (!was_visible) {
 				// Set window-open animation
 				init_animation(ps, w);
@@ -1141,6 +1138,24 @@ bool win_should_fade(session_t *ps, const struct managed_win *w) {
 		return false;
 	}
 	return ps->o.wintype_option[w->window_type].fade;
+}
+
+/**
+ * Determine if a window should animate.
+ */
+bool win_should_animate(session_t *ps, const struct managed_win *w) {
+    if (!ps->o.animations) {
+        return false;
+    }
+    if (ps->o.wintype_option[w->window_type].animation == 0) {
+        log_debug("Animation disabled by window_type");
+        return false;
+    }
+    if (c2_match(ps, w, ps->o.animation_blacklist, NULL)) {
+        log_debug("Animation disabled by animation_exclude");
+        return false;
+    }
+    return true;
 }
 
 /**
@@ -2339,7 +2354,7 @@ static void unmap_win_finish(session_t *ps, struct managed_win *w) {
 	// Try again at binding images when the window is mapped next time
 	win_clear_flags(w, WIN_FLAGS_IMAGE_ERROR);
 
-	// Flag window so that it gets animated when it reapears 
+	// Flag window so that it gets animated when it reapears
 	// in case it wasn't destroyed
 	win_set_flags(w, WIN_FLAGS_POSITION_STALE);
 	win_set_flags(w, WIN_FLAGS_SIZE_STALE);
@@ -2602,9 +2617,9 @@ void unmap_win_start(session_t *ps, struct managed_win *w) {
 	w->opacity_target_old = fmax(w->opacity_target, w->opacity_target_old);
 	w->opacity_target = win_calc_opacity_target(ps, w);
 
-	if (ps->o.animations &&
+	if (win_should_animate(ps, w) &&
 		ps->o.animation_for_unmap_window != OPEN_WINDOW_ANIMATION_NONE &&
-		ps->o.wintype_option[w->window_type].animation != 0) 
+		ps->o.wintype_option[w->window_type].animation != 0)
 	{
 		init_animation_unmap(ps, w);
 

@@ -649,16 +649,6 @@ paint_preprocess(session_t *ps, bool *fade_running, bool *animation_running) {
 	ps->fade_time += steps * ps->o.fade_delta;
 
 	double animation_delta = 0;
-	if (ps->o.animations) {
-		if (!ps->animation_time)
-			ps->animation_time = now;
-
-		animation_delta = (double)(now - ps->animation_time) /
-			(ps->o.animation_delta*100);
-
-		if (ps->o.animation_force_steps)
-			animation_delta = min2(animation_delta, ps->o.animation_delta/1000);
-	}
 
 	// First, let's process fading
 	win_stack_foreach_managed_safe(w, &ps->window_stack) {
@@ -666,9 +656,20 @@ paint_preprocess(session_t *ps, bool *fade_running, bool *animation_running) {
 		const bool was_painted = w->to_paint;
 		const double opacity_old = w->opacity;
 
+    if (win_should_animate(ps, w)) {
+      if (!ps->animation_time)
+        ps->animation_time = now;
+
+      animation_delta = (double)(now - ps->animation_time) /
+        (ps->o.animation_delta*100);
+
+      if (ps->o.animation_force_steps)
+        animation_delta = min2(animation_delta, ps->o.animation_delta/1000);
+    }
+
 		// IMPORTANT: These window animation steps must happen before any other
 		// [pre]processing. This is because it changes the window's geometry.
-		if (ps->o.animations &&
+    if (win_should_animate(ps, w) &&
 			!isnan(w->animation_progress) && w->animation_progress != 1.0 &&
 			ps->o.wintype_option[w->window_type].animation != 0 &&
 			win_is_mapped_in_x(w))
@@ -2022,6 +2023,7 @@ static session_t *session_init(int argc, char **argv, Display *dpy,
 	      c2_list_postprocess(ps, ps->o.invert_color_list) &&
 	      c2_list_postprocess(ps, ps->o.opacity_rules) &&
 	      c2_list_postprocess(ps, ps->o.rounded_corners_blacklist) &&
+	      c2_list_postprocess(ps, ps->o.animation_blacklist) &&
 	      c2_list_postprocess(ps, ps->o.focus_blacklist))) {
 		log_error("Post-processing of conditionals failed, some of your rules "
 		          "might not work");
