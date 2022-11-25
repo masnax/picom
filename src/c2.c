@@ -890,10 +890,10 @@ static int c2_parse_pattern(const char *pattern, int offset, c2_ptr_t *presult) 
 					char *pstr = NULL;
 					long val = strtol(
 					    tstr, &pstr, ('o' == pattern[offset] ? 8 : 16));
-					free(tstr);
 					if (pstr != &tstr[2] || val <= 0)
 						c2_error("Invalid octal/hex escape "
 						         "sequence.");
+					free(tstr);
 					*(ptptnstr++) = to_char_checked(val);
 					offset += 2;
 					break;

@@ -1155,6 +1155,11 @@ bool win_should_animate(session_t *ps, const struct managed_win *w) {
         log_debug("Animation disabled by animation_exclude");
         return false;
     }
+
+    if (ps->o.animation_for_unmap_window == OPEN_WINDOW_ANIMATION_NONE) {
+      return false;
+    }
+
     return true;
 }
 
