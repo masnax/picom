@@ -525,6 +525,17 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		w->animation_h = w->pending_g.height;
 		break;
 	}
+	case OPEN_WINDOW_ANIMATION_SLIDE_IN_HORIZ: {
+		w->animation_center_y = w->pending_g.y + w->pending_g.height * 0.5;
+		w->animation_center_x = w->pending_g.x + w->pending_g.width * 0.5 -
+			ps->root_width *
+				((ps->root_desktop_switch_direction < 0 &&
+				 ps->root_desktop_switch_direction >= -1) ||
+				ps->root_desktop_switch_direction > 1?1:-1);
+		w->animation_w = w->pending_g.height;
+		w->animation_h = w->pending_g.width;
+		break;
+	}
 	case OPEN_WINDOW_ANIMATION_SLIDE_OUT: {
 		w->animation_dest_center_x = w->pending_g.x + w->pending_g.width * 0.5;
 		w->animation_dest_center_y = w->pending_g.y + w->pending_g.height * 0.5 -
@@ -536,6 +547,52 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		w->animation_dest_h = w->pending_g.height;
 		break;
 	}
+    case OPEN_WINDOW_ANIMATION_SLIDE_IN_CENTER: {
+      if (w->pending_g.x + (w->pending_g.width / 2)> ps->root_width / 2) {
+        w->animation_center_x = ps->root_width;
+      } else {
+        w->animation_center_x = 0;
+      }
+
+      if (w->pending_g.y + (w->pending_g.height / 2)> ps->root_height / 2) {
+        w->animation_center_y = ps->root_height;
+      } else {
+        w->animation_center_y = 0;
+      }
+
+      w->animation_w = w->pending_g.width;
+      w->animation_h = w->pending_g.height;
+        break;
+    }
+    case OPEN_WINDOW_ANIMATION_SLIDE_OUT_CENTER: {
+        w->animation_center_x = (ps->root_width * 0.5);
+        w->animation_center_y = (ps->root_height * 0.5);
+        w->animation_dest_w = w->pending_g.width;
+        w->animation_dest_h = w->pending_g.height;
+        break;
+    }
+    case OPEN_WINDOW_ANIMATION_MINIMIZE: {
+        w->animation_center_x = (ps->root_width * 0.5) - (w->pending_g.width * 0.5);
+        w->animation_center_y = (ps->root_height * 0.5) - (w->pending_g.height * 0.5);
+		w->animation_w = 0;
+		w->animation_h = 0;
+        break;
+    }
+    case OPEN_WINDOW_ANIMATION_SQUEEZE: {
+            w->animation_center_x = w->pending_g.x + w->pending_g.width * 0.5;
+            w->animation_center_y = w->pending_g.y + w->pending_g.height * 0.5;
+            w->animation_w = w->pending_g.width;
+            w->animation_h = 0;
+        break;
+    }
+    case OPEN_WINDOW_ANIMATION_SQUEEZE_BOTTOM: {
+            w->animation_center_x = w->pending_g.x + w->pending_g.width * 0.5;
+            w->animation_center_y = w->pending_g.y + w->pending_g.height;
+            w->animation_w = w->pending_g.width;
+            w->animation_h = 0;
+            w->animation_center_y = w->pending_g.y + w->pending_g.height;
+        break;
+   }
 	case OPEN_WINDOW_ANIMATION_INVALID: assert(false); break;
 	}
 }
@@ -658,6 +715,65 @@ static void init_animation_unmap(session_t *ps, struct managed_win *w) {
 		w->animation_dest_h = w->pending_g.height;
 		break;
 	}
+	case OPEN_WINDOW_ANIMATION_SLIDE_OUT_HORIZ: {
+		w->animation_dest_center_y = w->pending_g.y + w->pending_g.height * 0.5;
+		w->animation_dest_center_x = w->pending_g.x + w->pending_g.width * 0.5 -
+			ps->root_width *
+				((ps->root_desktop_switch_direction < 0 &&
+				 ps->root_desktop_switch_direction >= -1) ||
+				ps->root_desktop_switch_direction > 1?-1:1);
+		w->animation_dest_w = w->pending_g.height;
+		w->animation_dest_h = w->pending_g.width;
+		break;
+	}
+    case OPEN_WINDOW_ANIMATION_SLIDE_IN_CENTER: {
+      if (w->pending_g.x + (w->pending_g.width / 2)> ps->root_width / 2) {
+        w->animation_center_x = ps->root_width;
+      } else {
+        w->animation_center_x = 0;
+      }
+
+      if (w->pending_g.y + (w->pending_g.height / 2)> ps->root_height / 2) {
+        w->animation_center_y = ps->root_height;
+      } else {
+        w->animation_center_y = 0;
+      }
+
+      w->animation_h = w->pending_g.height;
+      w->animation_h = w->pending_g.height;
+        break;
+    }
+    case OPEN_WINDOW_ANIMATION_SLIDE_OUT_CENTER: {
+        w->animation_center_x = (ps->root_width * 0.5);
+        w->animation_center_y = (ps->root_height * 0.5);
+        w->animation_dest_center_x = w->pending_g.x;
+        w->animation_dest_center_y = w->pending_g.y;
+        w->animation_dest_w = 0;
+        w->animation_dest_h = 0;
+        break;
+    }
+    case OPEN_WINDOW_ANIMATION_MINIMIZE: {
+        w->animation_center_x = (ps->root_width * 0.5) - (w->pending_g.width * 0.5);
+        w->animation_center_y = (ps->root_height * 0.5) - (w->pending_g.height * 0.5);
+		w->animation_w = 0;
+		w->animation_h = 0;
+        break;
+    }
+    case OPEN_WINDOW_ANIMATION_SQUEEZE: {
+            w->animation_center_x = w->pending_g.x + w->pending_g.width * 0.5;
+            w->animation_center_y = w->pending_g.y + w->pending_g.height * 0.5;
+            w->animation_w = w->pending_g.width;
+            w->animation_h = 0;
+        break;
+    }
+    case OPEN_WINDOW_ANIMATION_SQUEEZE_BOTTOM: {
+            w->animation_center_x = w->pending_g.x + w->pending_g.width * 0.5;
+            w->animation_center_y = w->pending_g.y + w->pending_g.height;
+            w->animation_w = w->pending_g.width;
+            w->animation_h = 0;
+            w->animation_center_y = w->pending_g.y + w->pending_g.height;
+        break;
+   }
 	case OPEN_WINDOW_ANIMATION_INVALID: assert(false); break;
 	}
 }
