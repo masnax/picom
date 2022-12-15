@@ -1189,8 +1189,8 @@ double win_calc_opacity_target(session_t *ps, const struct managed_win *w) {
 		return 0;
 	}
 	if (w->state == WSTATE_UNMAPPING || w->state == WSTATE_DESTROYING) {
-		if (ps->root_desktop_switch_direction)
-			return w->opacity;
+//		if (ps->root_desktop_switch_direction)
+//			return w->opacity;
 
 		return 0;
 	}
