@@ -56,7 +56,8 @@ region_t get_damage(session_t *ps, bool all_damage) {
 static void process_window_for_painting(session_t *ps, struct managed_win *w,
                                         void *win_image, double additional_alpha,
                                         region_t *reg_bound, region_t *reg_visible,
-                                        region_t *reg_paint, region_t *reg_paint_in_bound) {
+                                        region_t *reg_paint, region_t *reg_paint_in_bound,
+					region_t *reg_bound_local) {
 	// For window image processing, we don't have to limit the process
 	// region to damage for correctness. (see <damager-note> for
 	// details)
@@ -68,10 +69,10 @@ static void process_window_for_painting(session_t *ps, struct managed_win *w,
 	region_t reg_visible_local;
 	{
 		// The bounding shape, in window local coordinates
-		region_t reg_bound_local;
-		pixman_region32_init(&reg_bound_local);
-		pixman_region32_copy(&reg_bound_local, reg_bound);
-		pixman_region32_translate(&reg_bound_local, -w->g.x, -w->g.y);
+		//region_t reg_bound_local;
+		//pixman_region32_init(&reg_bound_local);
+		//pixman_region32_copy(&reg_bound_local, reg_bound);
+		//pixman_region32_translate(&reg_bound_local, -w->g.x, -w->g.y);
 
 		pixman_region32_init(&reg_visible_local);
 		pixman_region32_intersect(&reg_visible_local, reg_visible, reg_paint);
@@ -81,8 +82,7 @@ static void process_window_for_painting(session_t *ps, struct managed_win *w,
 		// to the bounding shape yet. So pass that as the visible
 		// region, not the clip region.
 		pixman_region32_intersect(&reg_visible_local, &reg_visible_local,
-		                          &reg_bound_local);
-		pixman_region32_fini(&reg_bound_local);
+		                          reg_bound_local);
 	}
 
 	auto new_img = ps->backend_data->ops->clone_image(ps->backend_data, win_image,
@@ -95,8 +95,10 @@ static void process_window_for_painting(session_t *ps, struct managed_win *w,
 	                                &reg_frame, &reg_visible_local,
 	                                (double[]){w->frame_opacity});
 	pixman_region32_fini(&reg_frame);
+  coord_t window_coord = {.x = w->g.x, .y = w->g.y};
 	ps->backend_data->ops->compose(ps->backend_data, new_img, w->g.x, w->g.y,
 	                               w->g.x + w->widthb, w->g.y + w->heightb,
+                                NULL, window_coord,
 	                               reg_paint_in_bound, reg_visible);
 	ps->backend_data->ops->release_image(ps->backend_data, new_img);
 	pixman_region32_fini(&reg_visible_local);
@@ -233,6 +235,7 @@ void paint_all_new(session_t *ps, struct managed_win *t, bool ignore_damage) {
 	if (ps->root_image) {
 		ps->backend_data->ops->compose(ps->backend_data, ps->root_image, 0, 0,
 		                               ps->root_width, ps->root_height,
+                                   NULL, (coord_t){0},
 		                               &reg_paint, &reg_visible);
 	} else {
 		ps->backend_data->ops->fill(ps->backend_data, (struct color){0, 0, 0, 1},
@@ -253,6 +256,23 @@ void paint_all_new(session_t *ps, struct managed_win *t, bool ignore_damage) {
 		// The bounding shape of the window, in global/target coordinates
 		// reminder: bounding shape contains the WM frame
 		auto reg_bound = win_get_bounding_shape_global_by_val(w);
+		auto reg_bound_no_corner = win_get_bounding_shape_global_without_corners_by_val(w);
+		region_t reg_bound_local;
+		pixman_region32_init(&reg_bound_local);
+		pixman_region32_copy(&reg_bound_local, &reg_bound);
+		pixman_region32_translate(&reg_bound_local, -w->g.x, -w->g.y);
+
+		if (!w->mask_image) {
+			// TODO(yshui) only allocate a mask if the window is shaped or has
+			// rounded corners.
+			w->mask_image = ps->backend_data->ops->make_mask(
+			    ps->backend_data,
+			    (geometry_t){.width = w->g.width, .height = w->g.height},
+			    &reg_bound_local);
+			ps->backend_data->ops->set_image_property(
+			    ps->backend_data, IMAGE_PROPERTY_CORNER_RADIUS, w->mask_image,
+			    (double[]){w->corner_radius});
+		}
 
 		// The clip region for the current window, in global/target coordinates
 		// reg_paint_in_bound \in reg_paint
@@ -347,15 +367,13 @@ void paint_all_new(session_t *ps, struct managed_win *t, bool ignore_damage) {
 		}
 
 		// Draw shadow on target
+                coord_t window_coord = {.x = w->g.x, .y = w->g.y};
 		if (w->shadow) {
 			assert(!(w->flags & WIN_FLAGS_SHADOW_NONE));
 			// Clip region for the shadow
 			// reg_shadow \in reg_paint
 			auto reg_shadow = win_extents_by_val(w);
 			pixman_region32_intersect(&reg_shadow, &reg_shadow, &reg_paint);
-			if (!ps->o.wintype_option[w->window_type].full_shadow) {
-				pixman_region32_subtract(&reg_shadow, &reg_shadow, &reg_bound);
-			}
 
 			// Mask out the region we don't want shadow on
 			if (pixman_region32_not_empty(&ps->shadow_exclude_reg)) {
@@ -391,11 +409,29 @@ void paint_all_new(session_t *ps, struct managed_win *t, bool ignore_damage) {
 			ps->backend_data->ops->set_image_property(
 			    ps->backend_data, IMAGE_PROPERTY_OPACITY, w->shadow_image,
 			    &w->opacity);
+
+      auto inverted_mask = NULL;
+      if (!ps->o.wintype_option[w->window_type].full_shadow) {
+        pixman_region32_subtract(&reg_shadow, &reg_shadow, &reg_bound_no_corner);
+        if (w->mask_image) {
+          inverted_mask = w->mask_image;
+          ps->backend_data->ops->set_image_property(
+              ps->backend_data, IMAGE_PROPERTY_INVERTED,
+              inverted_mask, (bool[]){true});
+        }
+      }
+
 			ps->backend_data->ops->compose(
 			    ps->backend_data, w->shadow_image, w->g.x + w->shadow_dx,
 			    w->g.y + w->shadow_dy, w->g.x + w->shadow_dx + w->shadow_width,
-			    w->g.y + w->shadow_dy + w->shadow_height, &reg_shadow,
-			    &reg_visible);
+			    w->g.y + w->shadow_dy + w->shadow_height,
+          inverted_mask, window_coord,
+          &reg_shadow, &reg_visible);
+      if (inverted_mask) {
+        ps->backend_data->ops->set_image_property(
+            ps->backend_data, IMAGE_PROPERTY_INVERTED,
+            inverted_mask, (bool[]){false});
+      }
 			pixman_region32_fini(&reg_shadow);
 		}
 
@@ -468,6 +504,7 @@ void paint_all_new(session_t *ps, struct managed_win *t, bool ignore_damage) {
 			ps->backend_data->ops->compose(ps->backend_data, w->win_image,
 									w->g.x, w->g.y,
 									w->g.x + w->widthb, w->g.y + w->heightb,
+                  NULL, window_coord,
 									&reg_paint_in_bound, &reg_visible);
 		} else {
 			if (is_animating && w->old_win_image) {
@@ -483,7 +520,7 @@ void paint_all_new(session_t *ps, struct managed_win *t, bool ignore_damage) {
 				process_window_for_painting(ps, w, w->win_image,
 								w->opacity >= 1 ? 1.0 : animation_progress_opacity,
 								&reg_bound, &reg_visible,
-								&reg_paint, &reg_paint_in_bound);
+								&reg_paint, &reg_paint_in_bound, &reg_bound_local);
 
 				// Only do this if size changes as otherwise moving
 				// transparent windows will flicker and if you just
@@ -492,16 +529,18 @@ void paint_all_new(session_t *ps, struct managed_win *t, bool ignore_damage) {
 					process_window_for_painting(ps, w, w->old_win_image,
 									1.0 - animation_progress_opacity,
 									&reg_bound, &reg_visible,
-									&reg_paint, &reg_paint_in_bound);
+									&reg_paint, &reg_paint_in_bound, &reg_bound_local);
 				}
 			} else {
 				process_window_for_painting(
 				    ps, w, w->win_image, 1.0, &reg_bound, &reg_visible,
-				    &reg_paint, &reg_paint_in_bound);
+				    &reg_paint, &reg_paint_in_bound, &reg_bound_local);
 			}
 		}
 	skip:
 		pixman_region32_fini(&reg_bound);
+		pixman_region32_fini(&reg_bound_local);
+		pixman_region32_fini(&reg_bound_no_corner);
 		pixman_region32_fini(&reg_paint_in_bound);
 	}
 	pixman_region32_fini(&reg_paint);

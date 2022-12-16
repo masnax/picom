@@ -30,6 +30,15 @@ typedef struct backend_base {
 	// ...
 } backend_t;
 
+typedef struct geometry {
+	int width;
+	int height;
+} geometry_t;
+
+typedef struct coord {
+	int x, y;
+} coord_t;
+
 typedef void (*backend_ready_callback_t)(void *);
 
 // This mimics OpenGL's ARB_robustness extension, which enables detection of GPU context
@@ -159,7 +168,7 @@ struct backend_operations {
 	 * @param reg_visible    the visible region, in target coordinates
 	 */
 	void (*compose)(backend_t *backend_data, void *image_data,
-	                int dst_x1, int dst_y1, int dst_x2, int dst_y2,
+	                int dst_x1, int dst_y1, int dst_x2, int dst_y2, void *mask, coord_t mask_dst,
 	                const region_t *reg_paint, const region_t *reg_visible);
 
 	/// Fill rectangle of the rendering buffer, mostly for debug purposes, optional.
@@ -196,6 +205,7 @@ struct backend_operations {
 	void *(*render_shadow)(backend_t *backend_data, int width, int height,
 	                       const conv *kernel, double r, double g, double b, double a);
 
+  void *(*make_mask)(backend_t *backend_data, geometry_t size, const region_t *reg);
 	// ============ Resource management ===========
 
 	/// Free resources associated with an image data structure

@@ -105,6 +105,7 @@ struct managed_win {
 	void *win_image;
 	void *old_win_image; // Old window image for interpolating window contents during animations
 	void *shadow_image;
+	void *mask_image;
 	/// Pointer to the next higher window to paint.
 	struct managed_win *prev_trans;
 	/// Number of windows above this window

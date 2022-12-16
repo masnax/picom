@@ -23,6 +23,8 @@ struct dummy_image {
 struct dummy_data {
 	struct backend_base base;
 	struct dummy_image *images;
+
+  struct backend_image mask;
 };
 
 struct backend_base *dummy_init(struct session *ps attr_unused) {
@@ -47,6 +49,9 @@ void dummy_deinit(struct backend_base *data) {
 
 static void dummy_check_image(struct backend_base *base, const struct dummy_image *img) {
 	auto dummy = (struct dummy_data *)base;
+  if (img == (struct dummy_image *)&dummy->mask) {
+		return;
+	}
 	struct dummy_image *tmp = NULL;
 	HASH_FIND_INT(dummy->images, &img->pixmap, tmp);
 	if (!tmp) {
@@ -58,8 +63,11 @@ static void dummy_check_image(struct backend_base *base, const struct dummy_imag
 
 void dummy_compose(struct backend_base *base, void *image, int dst_x1 attr_unused,
                    int dst_y1 attr_unused, int dst_x2 attr_unused, int dst_y2 attr_unused,
+                   void *mask attr_unused, coord_t mask_dst attr_unused,
 		   const region_t *reg_paint attr_unused, const region_t *reg_visible attr_unused) {
+  auto dummy attr_unused = (struct dummy_data *)base;
 	dummy_check_image(base, image);
+  assert(mask == NULL || mask == &dummy->mask);
 }
 
 void dummy_fill(struct backend_base *backend_data attr_unused, struct color c attr_unused,
@@ -94,6 +102,9 @@ void *dummy_bind_pixmap(struct backend_base *base, xcb_pixmap_t pixmap,
 
 void dummy_release_image(backend_t *base, void *image) {
 	auto dummy = (struct dummy_data *)base;
+  	if (image == &dummy->mask) {
+		return;
+	}
 	auto img = (struct dummy_image *)image;
 	assert(*img->refcount > 0);
 	(*img->refcount)--;
@@ -103,6 +114,13 @@ void dummy_release_image(backend_t *base, void *image) {
 		free(img);
 	}
 }
+
+void *dummy_make_mask(struct backend_base *base, geometry_t size attr_unused,
+                      const region_t *reg attr_unused) {
+	return &(((struct dummy_data *)base)->mask);
+}
+
+
 
 bool dummy_is_image_transparent(struct backend_base *base, void *image) {
 	auto img = (struct dummy_image *)image;
@@ -159,6 +177,7 @@ struct backend_operations dummy_ops = {
     .blur = dummy_blur,
     .bind_pixmap = dummy_bind_pixmap,
     .render_shadow = default_backend_render_shadow,
+  .make_mask = dummy_make_mask,
     .release_image = dummy_release_image,
     .is_image_transparent = dummy_is_image_transparent,
     .buffer_age = dummy_buffer_age,

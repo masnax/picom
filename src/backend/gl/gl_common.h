@@ -37,6 +37,12 @@ typedef struct {
 	GLint uniform_max_brightness;
 	GLint uniform_corner_radius;
 	GLint uniform_border_width;
+  GLint uniform_time;
+
+  GLint uniform_mask_tex;
+	GLint uniform_mask_offset;
+	GLint uniform_mask_corner_radius;
+	GLint uniform_mask_inverted;
 } gl_win_shader_t;
 
 // Program and uniforms for brightness shader
@@ -68,6 +74,8 @@ struct gl_texture {
 
 	// Textures for auxiliary uses.
 	GLuint auxiliary_texture[2];
+
+  gl_win_shader_t *shader;
 	void *user_data;
 };
 
@@ -84,6 +92,9 @@ struct gl_data {
 	gl_fill_shader_t fill_shader;
 	GLuint back_texture, back_fbo;
 	GLuint present_prog;
+
+
+	GLuint default_mask_texture;
 
 	/// Called when an gl_texture is decoupled from the texture it refers. Returns
 	/// the decoupled user_data
@@ -109,6 +120,7 @@ GLuint gl_create_program_from_str(const char *vert_shader_str, const char *frag_
  */
 void gl_compose(backend_t *, void *ptex,
 		int dst_x1, int dst_y1, int dst_x2, int dst_y2,
+    void *mask, coord_t mask_dst,
 		const region_t *reg_tgt, const region_t *reg_visible);
 
 void gl_resize(struct gl_data *, int width, int height);
@@ -122,6 +134,7 @@ bool gl_image_op(backend_t *base, enum image_operations op, void *image_data,
                  const region_t *reg_op, const region_t *reg_visible, void *arg);
 
 void gl_release_image(backend_t *base, void *image_data);
+void *gl_make_mask(backend_t *base, geometry_t size, const region_t *reg);
 
 void *gl_clone(backend_t *base, const void *image_data, const region_t *reg_visible);
 
